@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "deepseek": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DeepSeek",
+      "options": {
+        "base_url": "https://api.deepseek.com/v1",
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
+      },
+      "models": {
+        "deepseek-chat": { "name": "DeepSeek Chat" },
+        "deepseek-reasoner": { "name": "DeepSeek Reasoner" }
+      }
+    }
+  },
+  "agent": {
+    "research": {
+      "description": "DeepSeek research agent (draft)",
+      "mode": "primary",
+      "model": "deepseek/deepseek-chat",
+      "temperature": 0.2,
+      "prompt": "You are DeepAgent, a research agent powered by DeepSeek. Read instructions/system_prompt.md and skills/*/SKILL.md first. Plan, search via tools, cite sources, synthesize a structured report."
+    }
+  }
+}

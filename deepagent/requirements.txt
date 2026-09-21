@@ -1,0 +1,19 @@
+# Core
+deepagents>=0.1.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-deepseek>=0.1.0
+langchain-community>=0.3.0
+
+# Search (Tavily preferred; DDG fallback needs no key)
+tavily-python>=0.5.0
+ddgs>=9.0.0
+
+# MCP (optional, for mcp/ servers)
+langchain-mcp-adapters>=0.2.0
+
+# Config / CLI
+python-dotenv>=1.0.0
+
+# Dev / tests
+pytest>=8.0.0

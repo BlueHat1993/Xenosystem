@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "docs-langchain": {
+      "url": "https://docs.langchain.com/mcp",
+      "description": "LangChain / LangGraph / Deep Agents docs lookup"
+    },
+    "reference-langchain": {
+      "url": "https://reference.langchain.com/mcp",
+      "description": "LangChain API reference lookup"
+    },
+    "tavily-search": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "${TAVILY_API_KEY}"
+      },
+      "description": "Web search via Tavily (needs TAVILY_API_KEY). Disable if unset."
+    }
+  }
+}
