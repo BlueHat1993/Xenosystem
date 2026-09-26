@@ -1,31 +1,23 @@
-"""Minimal example: run a DeepSeek research query.
+"""Runnable example for DeepAgent research.
 
 Usage:
     python examples/run_research.py "your research question"
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# Add project root and src to path
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from deepagent.agent import build_agent, extract_final_answer
-from deepagent.config import get_settings
-
-
-def main() -> None:
-    question = " ".join(sys.argv[1:]) or "What is DeepSeek-V3 and how does it work?"
-    settings = get_settings()
-    settings.validate()
-
-    print(f"[model] {settings.deepseek_model}")
-    agent = build_agent(settings)
-    result = agent.invoke({"messages": [{"role": "user", "content": question}]})
-
-    print("\n=== FINAL REPORT ===\n")
-    print(extract_final_answer(result) or result)
-
+from deepagent.cli import main
 
 if __name__ == "__main__":
-    main()
+    query_args = sys.argv[1:] if len(sys.argv) > 1 else ["What is DeepSeek-V3 and how does it work?"]
+    raise SystemExit(main(query_args))

@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+from typing import Generator
+
+# Ensure project root is in sys.path
+_AGENT_ROOT = Path(__file__).resolve().parents[2]
+if str(_AGENT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AGENT_ROOT))
+if str(_AGENT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_AGENT_ROOT / "src"))
 
 from deepagent.config import Settings, get_settings
 
-INSTRUCTIONS_DIR = Path(__file__).resolve().parents[2] / "instructions"
-SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
+INSTRUCTIONS_DIR = _AGENT_ROOT / "instructions"
+SKILLS_DIR = _AGENT_ROOT / "skills"
 
 
 def load_prompt(name: str) -> str:
@@ -36,11 +45,11 @@ def build_model(settings: Settings):
 
 
 def build_tools(settings: Settings) -> list:
-    """Collect trusted tools: web search, workspace helpers, and plugins."""
-    from tools.web_search import make_web_search_tool
+    """Collect trusted tools: web search, URL fetching, workspace helpers, and plugins."""
+    from tools.web_search import make_web_search_tool, make_fetch_url_tool
     from tools.file_tools import make_file_tools
 
-    tools = [make_web_search_tool(settings)]
+    tools = [make_web_search_tool(settings), make_fetch_url_tool(settings)]
 
     try:
         tools.extend(make_file_tools(settings))
@@ -58,10 +67,16 @@ def build_tools(settings: Settings) -> list:
     return tools
 
 
+def _tool_name(tool) -> str:
+    if isinstance(tool, dict):
+        return str(tool.get("name", ""))
+    return str(getattr(tool, "name", ""))
+
+
 def build_subagents(settings: Settings, tools: list | None = None) -> list[dict]:
     """Build focused subagents with explicit capabilities and role prompts."""
     tools = tools if tools is not None else build_tools(settings)
-    web_tools = [tool for tool in tools if _tool_name(tool) == "web_search"]
+    web_tools = [tool for tool in tools if _tool_name(tool) in ("web_search", "fetch_url")]
     read_tools = [tool for tool in tools if _tool_name(tool) == "read_file"]
     research_tools = web_tools + read_tools
     skill = str(SKILLS_DIR / "researcher")
@@ -101,15 +116,10 @@ def build_subagents(settings: Settings, tools: list | None = None) -> list[dict]
     ]
 
 
-def _tool_name(tool) -> str:
-    if isinstance(tool, dict):
-        return str(tool.get("name", ""))
-    return str(getattr(tool, "name", ""))
-
-
 def build_agent(settings: Settings | None = None):
     """Create the DeepAgent research agent."""
     from deepagents import create_deep_agent
+    from deepagent.state import ResearchState
 
     settings = settings or get_settings()
     settings.validate()
@@ -120,8 +130,6 @@ def build_agent(settings: Settings | None = None):
     system_prompt = load_prompt("system_prompt.md") or (
         "You are a careful research agent. Plan, search, cite sources, then synthesize."
     )
-
-    from deepagent.state import ResearchState
 
     agent = create_deep_agent(
         model=model,
@@ -141,6 +149,54 @@ def run_research(question: str, settings: Settings | None = None) -> dict:
     agent = build_agent(settings)
     result = agent.invoke({"messages": [{"role": "user", "content": question}]})
     return result
+
+
+def stream_research(
+    question: str, settings: Settings | None = None
+) -> Generator[tuple[str, any], None, None]:
+    """Stream research execution, yielding (event_type, payload) tuples."""
+    settings = settings or get_settings()
+    settings.validate()
+    agent = build_agent(settings)
+    inputs = {"messages": [{"role": "user", "content": question}]}
+
+    try:
+        for mode, data in agent.stream(inputs, stream_mode=["messages", "updates"]):
+            if mode == "messages":
+                chunk, meta = data
+                content = getattr(chunk, "content", "")
+                if content:
+                    if isinstance(content, str):
+                        yield ("token", content)
+                    elif isinstance(content, list):
+                        for part in content:
+                            text = part.get("text", "") if isinstance(part, dict) else str(part)
+                            if text:
+                                yield ("token", text)
+            elif mode == "updates":
+                for node_name, node_update in data.items():
+                    yield ("node", node_name)
+                    if isinstance(node_update, dict) and "messages" in node_update:
+                        for msg in node_update["messages"]:
+                            msg_type = getattr(msg, "type", "")
+                            if msg_type == "tool":
+                                yield (
+                                    "tool_result",
+                                    {
+                                        "name": getattr(msg, "name", ""),
+                                        "content": str(getattr(msg, "content", ""))[:400],
+                                    },
+                                )
+    except Exception:
+        # Fallback to updates mode if multi-mode stream raises an error
+        for update in agent.stream(inputs, stream_mode="updates"):
+            for node_name, node_update in update.items():
+                yield ("node", node_name)
+                if isinstance(node_update, dict) and "messages" in node_update:
+                    for msg in node_update["messages"]:
+                        content = getattr(msg, "content", "")
+                        if content:
+                            yield ("token", str(content))
 
 
 def extract_final_answer(result: dict) -> str:

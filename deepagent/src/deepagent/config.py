@@ -3,12 +3,27 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from dotenv import load_dotenv
 
-load_dotenv()  # no-op if no .env file
+# Ensure deepagent and deepagent/src are discoverable on sys.path
+_AGENT_ROOT = Path(__file__).resolve().parents[2]
+if str(_AGENT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AGENT_ROOT))
+if str(_AGENT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_AGENT_ROOT / "src"))
+
+# Search for .env in current directory, deepagent root, and parent directory
+for _env_path in (
+    Path.cwd() / ".env",
+    _AGENT_ROOT / ".env",
+    _AGENT_ROOT.parent / ".env",
+):
+    if _env_path.is_file():
+        load_dotenv(_env_path)
+        break
 
 
 @dataclass
@@ -64,8 +79,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
-    settings = Settings()
-    return settings
+    return Settings()
 
 
 def _env_bool(name: str, default: bool) -> bool:

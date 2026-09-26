@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deepagent"
-version = "0.1.0-draft"
-description = "Draft DeepSeek-powered research agent (Deep Agents style)"
+version = "0.1.0.dev0"
+description = "Deepseek powered deepagent for Xenosystem"
 requires-python = ">=3.10"
 dependencies = [
   "deepagents",
@@ -17,7 +17,11 @@ dependencies = [
   "ddgs",
   "langchain-mcp-adapters",
   "python-dotenv",
+  "httpx",
 ]
+
+[project.scripts]
+deepagent = "deepagent.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
