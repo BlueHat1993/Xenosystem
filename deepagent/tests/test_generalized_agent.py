@@ -100,3 +100,32 @@ def test_build_agent_passes_research_contract(monkeypatch, tmp_path):
     }
     assert captured["skills"]
     assert captured["state_schema"].__name__ == "ResearchState"
+
+
+def test_agent_resolves_project_root_tool_imports(tmp_path):
+    from deepagent.agent import build_tools
+    from deepagent.config import Settings
+
+    settings = Settings(deepseek_api_key="test-key", workspace_root=str(tmp_path))
+
+    tools = build_tools(settings)
+
+    assert {tool.name for tool in tools} >= {
+        "web_search",
+        "fetch_url",
+        "read_file",
+        "write_report",
+    }
+
+
+def test_agent_includes_registered_plugin_tools(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    import deepagent.agent as agent_module
+    from deepagent.config import Settings
+
+    plugin_tool = SimpleNamespace(name="test_plugin_tool")
+    monkeypatch.setattr(agent_module, "load_plugin_tools", lambda: [plugin_tool])
+    settings = Settings(deepseek_api_key="test-key", workspace_root=str(tmp_path))
+
+    assert plugin_tool in agent_module.build_tools(settings)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from pathlib import Path
 from typing import Generator
 
@@ -14,6 +15,10 @@ if str(_AGENT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_AGENT_ROOT / "src"))
 
 from deepagent.config import Settings, get_settings
+from deepagent.tools.file_tools import make_file_tools
+from deepagent.tools.web_search import make_fetch_url_tool, make_web_search_tool
+
+load_plugin_tools = import_module("plugins.registry").load_plugin_tools
 
 INSTRUCTIONS_DIR = _AGENT_ROOT / "instructions"
 SKILLS_DIR = _AGENT_ROOT / "skills"
@@ -46,23 +51,9 @@ def build_model(settings: Settings):
 
 def build_tools(settings: Settings) -> list:
     """Collect trusted tools: web search, URL fetching, workspace helpers, and plugins."""
-    from tools.web_search import make_web_search_tool, make_fetch_url_tool
-    from tools.file_tools import make_file_tools
-
     tools = [make_web_search_tool(settings), make_fetch_url_tool(settings)]
-
-    try:
-        tools.extend(make_file_tools(settings))
-    except Exception:
-        pass
-
-    # Append plugin tools if any are registered.
-    try:
-        from plugins.registry import load_plugin_tools
-
-        tools.extend(load_plugin_tools())
-    except Exception:
-        pass
+    tools.extend(make_file_tools(settings))
+    tools.extend(load_plugin_tools())
 
     return tools
 
