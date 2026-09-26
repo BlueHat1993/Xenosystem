@@ -1,9 +1,10 @@
-"""Central config. Loads DeepSeek + search settings from env / .env."""
+"""Central configuration for the DeepSeek research agent."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -25,6 +26,25 @@ class Settings:
     tavily_max_results: int = field(
         default_factory=lambda: int(os.getenv("TAVILY_MAX_RESULTS", "5"))
     )
+    workspace_root: str = field(
+        default_factory=lambda: os.getenv("DEEPAGENT_WORKSPACE_ROOT", os.getcwd())
+    )
+    allow_report_writes: bool = field(
+        default_factory=lambda: _env_bool("DEEPAGENT_ALLOW_REPORT_WRITES", True)
+    )
+    enable_dynamic_tools: bool = field(
+        default_factory=lambda: _env_bool("DEEPAGENT_ENABLE_DYNAMIC_TOOLS", False)
+    )
+    require_tool_approval: bool = field(
+        default_factory=lambda: _env_bool("DEEPAGENT_REQUIRE_TOOL_APPROVAL", True)
+    )
+    max_tool_execution_seconds: int = field(
+        default_factory=lambda: int(os.getenv("DEEPAGENT_MAX_TOOL_SECONDS", "30"))
+    )
+
+    @property
+    def workspace_path(self) -> Path:
+        return Path(self.workspace_root).expanduser().resolve()
 
     def validate(self, require_keys: bool = True) -> None:
         if require_keys and not self.deepseek_api_key:
@@ -33,8 +53,23 @@ class Settings:
                 "Create one at https://platform.deepseek.com and export it "
                 "or put it in a .env file (see .env.example)."
             )
+        if self.max_tool_execution_seconds < 1:
+            raise ValueError("DEEPAGENT_MAX_TOOL_SECONDS must be at least 1")
+        if not self.workspace_path.exists() or not self.workspace_path.is_dir():
+            raise ValueError(f"DEEPAGENT_WORKSPACE_ROOT is not a directory: {self.workspace_root}")
+        if self.enable_dynamic_tools and not self.require_tool_approval:
+            raise ValueError(
+                "Generated dynamic tools require approval: set DEEPAGENT_REQUIRE_TOOL_APPROVAL=true"
+            )
 
 
 def get_settings() -> Settings:
     settings = Settings()
     return settings
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}

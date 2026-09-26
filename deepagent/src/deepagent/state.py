@@ -1,14 +1,18 @@
-"""Shared agent state (extends Deep Agents default state when available)."""
+"""Shared state for delegated research and evidence collection."""
 
 from __future__ import annotations
 
 try:
-    from deepagents.state import DeepAgentState  # type: ignore
+    from deepagents import DeepAgentState  # type: ignore
 
     class ResearchState(DeepAgentState):  # type: ignore
-        """Inherits todos, files, messages from DeepAgentState."""
+        """Deep Agents state plus structured research metadata."""
 
-        pass
+        question: str
+        plan: str
+        findings: list[dict]
+        selected_capabilities: list[str]
+        provenance: list[dict]
 
 except Exception:  # deepagents not installed yet — fall back to plain TypedDict
     from typing import Annotated, TypedDict
@@ -19,4 +23,6 @@ except Exception:  # deepagents not installed yet — fall back to plain TypedDi
         messages: Annotated[list, add_messages]
         question: str
         plan: str
-        findings: list[str]
+        findings: list[dict]
+        selected_capabilities: list[str]
+        provenance: list[dict]
